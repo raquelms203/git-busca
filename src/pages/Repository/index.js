@@ -8,6 +8,7 @@ import FormControl from "@material-ui/core/FormControl";
 import MenuItem from "@material-ui/core/MenuItem";
 import Select from "@material-ui/core/Select";
 import InputLabel from "@material-ui/core/InputLabel";
+import { Button, Grid, Box } from "@material-ui/core";
 
 export default class Repository extends Component {
     static propTypes = {
@@ -21,8 +22,13 @@ export default class Repository extends Component {
         repository: {},
         issues: [],
         loading: true,
-        options: ["Todas", "Ativas", "Fechadas"],
-        valueDropdown: "Todas"
+        options: [
+            ["Todas", "all"],
+            ["Ativas", "open"],
+            ["Fechadas", "closed"]
+        ],
+        valueDropdown: "all",
+        page: "1"
     };
     async componentDidMount() {
         await this.buildPage();
@@ -33,28 +39,13 @@ export default class Repository extends Component {
 
         const repoName = decodeURIComponent(match.params.repository);
 
-        const { valueDropdown } = this.state;
-
-        var value;
-
-        switch (valueDropdown) {
-            case "Todas":
-                value = "all";
-                break;
-            case "Ativas":
-                value = "open";
-                break;
-            case "Fechadas":
-                value = "close";
-                break;
-            default:
-                value = "";
-                break;
-        }
+        const { valueDropdown, page } = this.state;
 
         const [repository, issues] = await Promise.all([
             api.get(`/repos/${repoName}`),
-            api.get(`/repos/${repoName}/issues?state=${value}&page=1`)
+            api.get(
+                `/repos/${repoName}/issues?state=${valueDropdown}&page=${page}`
+            )
         ]);
 
         this.setState({
@@ -65,9 +56,24 @@ export default class Repository extends Component {
     }
 
     handleChange = e => {
-        console.log(e.target.value);
         this.setState({
             valueDropdown: e.target.value
+        });
+        this.buildPage();
+    };
+
+    handleClickNext = e => {
+        const sum = parseInt(this.state.page) + 1;
+        this.setState({
+            page: sum
+        });
+        this.buildPage();
+    };
+
+    handleClickPrev = e => {
+        const sum = parseInt(this.state.page) - 1;
+        this.setState({
+            page: sum
         });
         this.buildPage();
     };
@@ -78,7 +84,8 @@ export default class Repository extends Component {
             issues,
             loading,
             options,
-            valueDropdown
+            valueDropdown,
+            page
         } = this.state;
 
         if (loading) {
@@ -107,13 +114,12 @@ export default class Repository extends Component {
                         onChange={this.handleChange}
                     >
                         {options.map(item => (
-                            <MenuItem key={item} value={item}>
-                                {item}
+                            <MenuItem key={item} value={item[1]}>
+                                {item[0]}
                             </MenuItem>
                         ))}
                     </Select>
                 </FormControl>
-
                 <IssuesList>
                     {issues.map(issue => (
                         <li key={String(issue.id)}>
@@ -135,6 +141,26 @@ export default class Repository extends Component {
                         </li>
                     ))}
                 </IssuesList>
+               <Box mt={4}>
+               <Grid container direction="row" justify="space-between">
+               {page > 1 && (
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={this.handleClickPrev}
+                    >
+                        {"< "} {page - 1}{" "}
+                    </Button>
+                )}
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={this.handleClickNext}
+                >
+                    > {parseInt(page)+ 1}
+                </Button>
+               </Grid>
+               </Box>
             </Container>
         );
     }
